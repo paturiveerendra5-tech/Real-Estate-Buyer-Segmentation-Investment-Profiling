@@ -1,0 +1,4 @@
+Model,Number of Clusters,Silhouette Score
+K-Means (4 Clusters),4,0.40548896712466026
+Hierarchical (2 Clusters),2,0.37785531184664534
+K-Means (2 Clusters),2,0.04814162274311262
