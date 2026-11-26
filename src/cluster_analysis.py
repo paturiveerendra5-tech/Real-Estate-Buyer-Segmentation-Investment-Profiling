@@ -1,4 +1,7 @@
+# ============================================================
 # CLUSTER ANALYSIS MODULE
+# Real Estate Buyer Segmentation & Investment Profiling
+# ============================================================
 
 import pandas as pd
 from pathlib import Path
@@ -9,7 +12,6 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 FINAL_PATH = PROJECT_ROOT / "data" / "final"
-
 REPORT_PATH = PROJECT_ROOT / "reports"
 
 REPORT_PATH.mkdir(parents=True, exist_ok=True)
@@ -21,16 +23,48 @@ def load_final_data():
 
     file_path = FINAL_PATH / "final_buyer_segmentation.csv"
 
+    if not file_path.exists():
+        raise FileNotFoundError(
+            f"Dataset not found: {file_path}"
+        )
+
     buyers = pd.read_csv(file_path)
 
-    print("Final Buyer Dataset Loaded Successfully!")
+    if buyers.empty:
+        raise ValueError("Final buyer dataset is empty!")
 
+    print("\nFinal Buyer Dataset Loaded Successfully!")
     print("Dataset Shape:", buyers.shape)
 
     return buyers
 
 
-# Step 3: Identify Cluster Column
+# Step 3: Validate Required Columns
+
+def validate_columns(buyers):
+
+    required_columns = [
+        "client_id",
+        "country",
+        "region",
+        "satisfaction_score",
+        "client_type",
+        "acquisition_purpose",
+        "loan_applied"
+    ]
+
+    missing_columns = [
+        col for col in required_columns
+        if col not in buyers.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            f"Missing required columns: {missing_columns}"
+        )
+
+
+# Step 4: Identify Cluster Column
 
 def get_cluster_column(buyers):
 
@@ -41,101 +75,184 @@ def get_cluster_column(buyers):
         return "kmeans_cluster"
 
     else:
-        raise ValueError("Cluster column not found!")
+        raise ValueError(
+            "Cluster column not found in dataset!"
+        )
 
 
-# Step 4: Cluster Summary
+# Step 5: Cluster Summary
 
 def generate_cluster_summary(buyers):
 
-    cluster_column = get_cluster_column(buyers)
+    summary = buyers.groupby("cluster").agg(
 
-    summary = buyers.groupby(cluster_column).agg(
         total_buyers=("client_id", "count"),
+
         countries=("country", "nunique"),
+
         regions=("region", "nunique"),
-        average_satisfaction=("satisfaction_score", "mean")
+
+        average_satisfaction=(
+            "satisfaction_score",
+            "mean"
+        )
+
     ).reset_index()
 
-    summary = summary.rename(
-        columns={cluster_column: "cluster"}
+    summary["average_satisfaction"] = (
+        summary["average_satisfaction"].round(2)
     )
+
+    summary["buyer_percentage"] = (
+        summary["total_buyers"]
+        / summary["total_buyers"].sum()
+        * 100
+    ).round(2)
 
     return summary
 
 
-# Step 5: Buyer Type Analysis
+# Step 6: Buyer Type Analysis
 
 def analyze_buyer_types(buyers):
 
-    return pd.crosstab(
+    analysis = pd.crosstab(
         buyers["cluster"],
-        buyers["client_type"]
+        buyers["client_type"],
+        margins=True
     )
 
+    return analysis
 
-# Step 6: Acquisition Purpose Analysis
+
+# Step 7: Acquisition Purpose Analysis
 
 def analyze_acquisition_purpose(buyers):
 
-    return pd.crosstab(
+    analysis = pd.crosstab(
         buyers["cluster"],
-        buyers["acquisition_purpose"]
+        buyers["acquisition_purpose"],
+        margins=True
     )
 
+    return analysis
 
-# Step 7: Loan Application Analysis
+
+# Step 8: Loan Application Analysis
 
 def analyze_loan_behavior(buyers):
 
-    return pd.crosstab(
+    analysis = pd.crosstab(
         buyers["cluster"],
-        buyers["loan_applied"]
+        buyers["loan_applied"],
+        margins=True
     )
 
+    return analysis
 
-# Step 8: Geographic Analysis
+
+# Step 9: Geographic Analysis
 
 def analyze_geography(buyers):
 
     country_analysis = pd.crosstab(
         buyers["cluster"],
-        buyers["country"]
+        buyers["country"],
+        margins=True
     )
 
     region_analysis = pd.crosstab(
         buyers["cluster"],
-        buyers["region"]
+        buyers["region"],
+        margins=True
     )
 
     return country_analysis, region_analysis
 
 
-# Step 9: Save Analysis Results
+# Step 10: Save Analysis Results
 
-def save_analysis_results(summary):
+def save_analysis_results(
+    summary,
+    buyer_types,
+    acquisition,
+    loan,
+    countries,
+    regions
+):
 
-    output_file = REPORT_PATH / "cluster_analysis_summary.csv"
+    results = {
 
-    summary.to_csv(output_file, index=False)
+        "cluster_analysis_summary.csv": summary,
 
-    print("Cluster Analysis Summary Saved Successfully!")
+        "buyer_type_analysis.csv": buyer_types,
+
+        "acquisition_purpose_analysis.csv": acquisition,
+
+        "loan_behavior_analysis.csv": loan,
+
+        "country_analysis.csv": countries,
+
+        "region_analysis.csv": regions
+
+    }
+
+    for filename, dataframe in results.items():
+
+        output_file = REPORT_PATH / filename
+
+        dataframe.to_csv(output_file)
+
+        print(f"Saved Successfully: {filename}")
 
 
-# Step 10: Main Function
+# Step 11: Main Function
 
 def main():
 
+    print("\n================================")
+    print(" REAL ESTATE CLUSTER ANALYSIS")
+    print("================================")
+
+    # Load Dataset
+
     buyers = load_final_data()
+
+    # Validate Dataset
+
+    validate_columns(buyers)
+
+    # Identify Cluster Column
 
     cluster_column = get_cluster_column(buyers)
 
     if cluster_column != "cluster":
+
         buyers = buyers.rename(
             columns={cluster_column: "cluster"}
         )
 
+    # Handle Missing Values in Cluster Column
+
+    buyers = buyers.dropna(subset=["cluster"]).copy()
+
+    if buyers.empty:
+        raise ValueError(
+            "No valid cluster records found!"
+        )
+
+    # Convert Satisfaction Score to Numeric
+
+    buyers["satisfaction_score"] = pd.to_numeric(
+        buyers["satisfaction_score"],
+        errors="coerce"
+    )
+
+    # Generate Cluster Summary
+
     summary = generate_cluster_summary(buyers)
+
+    # Buyer Analysis
 
     buyer_types = analyze_buyer_types(buyers)
 
@@ -143,30 +260,47 @@ def main():
 
     loan = analyze_loan_behavior(buyers)
 
+    # Geographic Analysis
+
     countries, regions = analyze_geography(buyers)
 
-    print("\nCLUSTER SUMMARY")
-    print(summary)
+    # Display Results
 
-    print("\nBUYER TYPE ANALYSIS")
+    print("\n1. CLUSTER SUMMARY")
+    print(summary.to_string(index=False))
+
+    print("\n2. BUYER TYPE ANALYSIS")
     print(buyer_types)
 
-    print("\nACQUISITION PURPOSE ANALYSIS")
+    print("\n3. ACQUISITION PURPOSE ANALYSIS")
     print(acquisition)
 
-    print("\nLOAN APPLICATION ANALYSIS")
+    print("\n4. LOAN APPLICATION ANALYSIS")
     print(loan)
 
-    print("\nCOUNTRY ANALYSIS")
+    print("\n5. COUNTRY ANALYSIS")
     print(countries)
 
-    print("\nREGION ANALYSIS")
+    print("\n6. REGION ANALYSIS")
     print(regions)
 
-    save_analysis_results(summary)
+    # Save All Results
 
-    print("\nCLUSTER ANALYSIS COMPLETED!")
+    save_analysis_results(
+        summary,
+        buyer_types,
+        acquisition,
+        loan,
+        countries,
+        regions
+    )
 
+    print("\n================================")
+    print(" CLUSTER ANALYSIS COMPLETED!")
+    print("================================")
+
+
+# Step 12: Execute Main Function
 
 if __name__ == "__main__":
 

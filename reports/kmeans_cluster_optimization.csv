@@ -1,0 +1,8 @@
+Model,Number of Clusters,Silhouette Score,Davies-Bouldin Score,Calinski-Harabasz Score
+K-Means,2,0.0481,5.1541,49.4448
+K-Means,3,0.3824,3.5079,57.4144
+K-Means,4,0.4055,2.9275,48.1669
+K-Means,5,-0.0307,2.7261,38.5358
+K-Means,6,0.0575,2.9048,42.0987
+K-Means,7,0.0432,2.4724,44.9483
+K-Means,8,0.0534,2.2561,44.7873
