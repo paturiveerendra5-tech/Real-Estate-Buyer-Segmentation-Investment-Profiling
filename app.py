@@ -634,15 +634,13 @@ if filtered_buyers.empty:
 # STEP 9: PROFESSIONAL HELPER FUNCTIONS
 # ============================================================
 
-# ------------------------------------------------------------
 # 1. PROFESSIONAL CHART FUNCTION
-# ------------------------------------------------------------
 
 def show_chart(fig, height=420):
 
     fig.update_layout(
 
-        template="plotly_white",
+        template=CHART_TEMPLATE,
 
         height=height,
 
@@ -702,7 +700,6 @@ def show_chart(fig, height=420):
         fig,
         use_container_width=True
     )
-
 
 # ------------------------------------------------------------
 # 2. COUNT TABLE FUNCTION
